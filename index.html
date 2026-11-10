@@ -18,7 +18,7 @@
 </head>
 <body>
 <style>
-/* Layout: one narrow ledger column — shop tabs, month total, two big tap buttons, then the day-by-day log */
+/* Layout: one narrow ledger column — shop tabs, month total, the shop's own tap buttons, then the day-by-day log */
 :root{
   --bg:#edf1ef; --surface:#ffffff; --sunk:#e3e9e6; --line:#d3dcd8;
   --ink:#16201c; --muted:#5b6a64;
@@ -169,11 +169,34 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 14px;display:flex;gap:14px;align-items:center;font-size:15px;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:20}
 .toast button{border:0;background:transparent;color:var(--accent-soft);font-weight:700}
 @media (prefers-reduced-motion:reduce){.tap{transition:none}}
+
+.stack{display:flex;flex-direction:column;gap:16px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.bhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:-6px}
+.bhead h2{margin:0}
+.linkbtn{border:0;background:var(--sunk);color:var(--accent);font-weight:700;padding:6px 14px;border-radius:999px;font-size:14px}
+.btn.danger{background:var(--danger-soft);color:var(--danger)}
+.tap.i{background:var(--item-soft);color:var(--item)}
+.tap.a{background:var(--accent-soft);color:var(--accent)}
+.tap.new{background:var(--surface);border:1.5px dashed var(--line);color:var(--muted)}
+.tap.editing{outline:2px dashed currentColor;outline-offset:-7px}
+.tap strong{text-align:center;line-height:1.25;overflow-wrap:anywhere}
+.icn{display:grid;place-items:center;height:36px}
+.icn svg{width:34px;height:34px}
+.icn.emo{font-size:30px;line-height:1}
+.emogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px}
+.emogrid button{height:46px;font-size:24px;border:1.5px solid var(--line);background:var(--surface);border-radius:10px;display:grid;place-items:center;color:var(--ink);padding:0}
+.emogrid button svg{width:24px;height:24px}
+.emogrid button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.confirm{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:14px;font-weight:500}
+.confirm .btn.danger{background:var(--danger);color:#fff}
+.break .a b{color:var(--accent)}
+.ic .emo-s{font-size:17px;line-height:1}
 </style>
 
 <div class="app" dir="rtl" lang="ar">
   <header>
-    <h1>دفتر الدين<small id="who">حساب الشحن عند المحلات</small></h1>
+    <h1>دفتر الدين<small>حساب الشحن والمشتريات عند المحلات</small></h1>
     <div class="month" aria-label="الشهر">
       <button id="mPrev" aria-label="الشهر السابق">›</button>
       <span id="mLabel" class="num">—</span>
@@ -184,34 +207,36 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
   <div id="loading" class="empty">جاري تحميل الدفتر…</div>
 
   <div id="main" hidden>
-    <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="stack">
       <div class="shops" id="shops" role="tablist" aria-label="المحلات"></div>
-      <form class="addshop" id="addShopForm" hidden>
+
+      <form class="noteform" id="addShopForm" hidden>
+        <b>محل جديد</b>
         <input type="text" id="shopName" placeholder="اسم المحل" autocomplete="off" maxlength="40">
-        <button class="btn" type="submit">إضافة</button>
-        <button class="btn ghost" type="button" id="cancelShop">إلغاء</button>
+        <div class="seg" role="group" aria-label="نوع المحل" id="shopType">
+          <button type="button" data-t="charge" aria-pressed="true">محل شحن</button>
+          <button type="button" data-t="store" aria-pressed="false">متجر / بقالة</button>
+        </div>
+        <small class="hint" id="shopTypeHint">بيجي فيه أزرار الباور والجوال واللابتوب والتبريد جاهزة.</small>
+        <div class="actions">
+          <button class="btn" type="submit">إضافة</button>
+          <button class="btn ghost" type="button" id="cancelShop">إلغاء</button>
+        </div>
       </form>
 
       <div id="noShop" class="empty" hidden>
         <b>ابدأ بإضافة أول محل</b>
-        اكتب اسم المحل اللي بتشحن عنده، وبعدها كل شحنة بكبسة زر.
+        اكتب اسم المحل، وبعدها كل شحنة أو غرض بكبسة زر.
         <div style="margin-top:12px"><button class="btn" id="firstShop">+ إضافة محل</button></div>
       </div>
 
-      <div id="shopView" hidden style="display:flex;flex-direction:column;gap:16px">
+      <div id="shopView" class="stack" hidden>
         <section class="total" aria-live="polite">
           <div>
             <div class="lbl" id="totLbl">المطلوب هالشهر</div>
             <div class="big num"><span id="tot">0</span><em>₪</em></div>
           </div>
-          <div class="break num">
-            <div class="p"><span>باور <span id="pc">0</span>×2</span><b id="pv">0 ₪</b></div>
-            <div class="m"><span>جوال <span id="mc">0</span>×1</span><b id="mv">0 ₪</b></div>
-            <div class="l"><span>لابتوب <span id="lc">0</span>×2</span><b id="lv">0 ₪</b></div>
-            <div class="c"><span>تبريد <span id="cc">0</span>×1</span><b id="cv">0 ₪</b></div>
-            <div class="i"><span>أغراض</span><b id="iv">0 ₪</b></div>
-            <div class="d"><span>دفعات</span><b id="dv">0 ₪</b></div>
-          </div>
+          <div class="break num" id="break"></div>
         </section>
 
         <div class="day">
@@ -220,28 +245,47 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
           <button id="today" hidden>رجّع لليوم</button>
         </div>
 
-        <div class="taps">
-          <button class="tap p" id="addPower">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M11 9l-3 3h4l-3 3"/></svg>
-            <strong>شحن باور</strong><span>+ 2 ₪</span><span class="cnt num" id="pToday">اليوم 0</span>
-          </button>
-          <button class="tap m" id="addPhone">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M13 7l-2.5 4h3L11 15"/></svg>
-            <strong>شحن جوال</strong><span>+ 1 ₪</span><span class="cnt num" id="mToday">اليوم 0</span>
-          </button>
-          <button class="tap l" id="addLaptop">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/><path d="M12.5 7.5l-2 3h3l-2 3"/></svg>
-            <strong>شحن لابتوب</strong><span>+ 2 ₪</span><span class="cnt num" id="lToday">اليوم 0</span>
-          </button>
-          <button class="tap c" id="addCool">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11"/><path d="M9.5 4L12 6l2.5-2M9.5 20l2.5-2 2.5 2"/></svg>
-            <strong>تبريد غرض</strong><span>+ 1 ₪ لليوم</span><span class="cnt num" id="cToday">اليوم 0</span>
-          </button>
+        <div class="bhead">
+          <h2 id="tapsTitle">الأزرار</h2>
+          <button class="linkbtn" id="editBtns" type="button">تعديل</button>
+        </div>
+        <p class="hint" id="editHint" hidden>اكبس على أي زر لتعدّل اسمه أو سعره أو أيقونته، أو ضيف زر جديد.</p>
+        <div class="taps" id="taps"></div>
+
+        <form class="noteform" id="btnForm" hidden>
+          <b id="btnFormTitle">زر جديد</b>
+          <div class="row2">
+            <input type="text" id="btnName" placeholder="الاسم، مثلاً: شبسي" autocomplete="off" maxlength="30">
+            <input type="number" id="btnPrice" placeholder="السعر ₪" inputmode="decimal" min="0" step="0.5">
+          </div>
+          <small class="hint">اختار أيقونة:</small>
+          <div class="emogrid" id="iconGrid" role="group" aria-label="الأيقونة"></div>
+          <div class="actions">
+            <button class="btn" type="submit">حفظ</button>
+            <button class="btn ghost" type="button" id="cancelBtn">إلغاء</button>
+            <button class="btn danger" type="button" id="delBtn" hidden>حذف الزر</button>
+          </div>
+        </form>
+
+        <div class="noteform" id="shopEdit" hidden>
+          <b>إعدادات المحل</b>
+          <div class="addshop">
+            <input type="text" id="renameInput" maxlength="40" aria-label="اسم المحل">
+            <button class="btn ghost" type="button" id="renameBtn">تغيير الاسم</button>
+          </div>
+          <button class="btn danger" type="button" id="delShop">حذف المحل</button>
+          <div class="confirm" id="delShopConfirm" hidden>
+            <span id="delShopMsg"></span>
+            <div class="actions">
+              <button class="btn danger" type="button" id="delShopYes">نعم، احذف</button>
+              <button class="btn ghost" type="button" id="delShopNo">لا</button>
+            </div>
+          </div>
         </div>
 
         <button class="notebtn" id="openNote">+ ملاحظة أو مبلغ (أغراض، دجاج، دفعة…)</button>
         <form class="noteform" id="noteForm" hidden>
-          <div class="seg" role="group" aria-label="نوع المبلغ">
+          <div class="seg" role="group" aria-label="نوع المبلغ" id="noteKind">
             <button type="button" data-k="item" aria-pressed="true">أخذت أغراض</button>
             <button type="button" data-k="pay" aria-pressed="false">دفعت له</button>
           </div>
@@ -278,19 +322,29 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
 <script>
 (function(){
   document.documentElement.dir = 'rtl';
-  var PRICE = {power:2, phone:1, laptop:2, cool:1};
-  var LABEL = {power:'شحن باور', phone:'شحن جوال', laptop:'شحن لابتوب', cool:'تبريد غرض (يوم)', item:'أغراض', pay:'دفعة'};
-  var TAPS = ['power','phone','laptop','cool'];
+  var BUILTIN = ['power','phone','laptop','cool'];
+  var LABEL = {power:'شحن باور', phone:'شحن جوال', laptop:'شحن لابتوب', cool:'تبريد غرض', item:'أغراض', pay:'دفعة'};
+  var DEFAULT_BTNS = [
+    {id:'power', name:'شحن باور', price:2, icon:'power'},
+    {id:'phone', name:'شحن جوال', price:1, icon:'phone'},
+    {id:'laptop', name:'شحن لابتوب', price:2, icon:'laptop'},
+    {id:'cool', name:'تبريد غرض', price:1, icon:'cool', unit:'لليوم'}
+  ];
+  var EMOJIS = ['🍟','🍪','🍫','🍬','🥤','🧃','☕','🍞','🥚','🍗','🍚','🥫','🧀','🍦','🧴','🧼','🧻','💡','🛒','📦'];
+  var COLORS = ['i','a','l','c','p','m'];
+  var COLOR_OF = {power:'p', phone:'m', laptop:'l', cool:'c'};
   var MONTHS = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
   var DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-  var ICONS = {
-    power:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/></svg>',
-    phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>',
+  var SVG = {
+    power:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M11 9l-3 3h4l-3 3"/></svg>',
+    phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M13 7l-2.5 4h3L11 15"/></svg>',
+    laptop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/><path d="M12.5 7.5l-2 3h3l-2 3"/></svg>',
+    cool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11"/><path d="M9.5 4L12 6l2.5-2M9.5 20l2.5-2 2.5 2"/></svg>',
     item:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>',
-    laptop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>',
-    cool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v18M5 7.5l14 9M19 7.5l-14 9"/></svg>',
     pay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>'
   };
+  var ICON_CHOICES = ['power','phone','laptop','cool'].concat(EMOJIS);
+
   function $(id){ return document.getElementById(id); }
   function pad(n){ return String(n).padStart(2,'0'); }
   function dateKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
@@ -301,12 +355,19 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
   function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
   function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
   function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  function iconNode(icon){
+    var s=el('span','icn');
+    if(SVG[icon]) s.innerHTML=SVG[icon]; else s.textContent=icon||'🛒';
+    if(!SVG[icon]) s.className='icn emo';
+    return s;
+  }
 
   var S = { shops:[], entries:[], shopId:lsGet('debt-shop'), month:monthOf(todayKey()), day:todayKey(),
-            noteKind:'item', loaded:false, readonly:false, pendingDel:null };
+            noteKind:'item', shopType:'charge', loaded:false, readonly:false, pendingDel:null,
+            editing:false, btnEdit:null, btnIcon:EMOJIS[0] };
   var store = null;
 
-  /* ---------- storage: private db per person, or this phone's storage as fallback ---------- */
+  /* ---------- storage: private db per person, or this phone's storage ---------- */
   function makeLocal(){
     var KEY='debt-book-v1', data={shops:[],entries:[]};
     try{ var r=localStorage.getItem(KEY); if(r) data=JSON.parse(r); }catch(e){}
@@ -318,7 +379,8 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
       kind:'local',
       onShops:function(cb){ shopsCb=cb; emitShops(); },
       watchMonth:function(m,cb){ month=m; monthCb=cb; emitMonth(); },
-      addShop:function(s){ data.shops.push(s); save(); emitShops(); return Promise.resolve(); },
+      setShop:function(s){ var i=data.shops.findIndex(function(x){return x.id===s.id;}); if(i>=0) data.shops[i]=s; else data.shops.push(s); save(); emitShops(); return Promise.resolve(); },
+      deleteShop:function(id){ data.shops=data.shops.filter(function(x){return x.id!==id;}); data.entries=data.entries.filter(function(e){return e.shopId!==id;}); save(); emitShops(); emitMonth(); return Promise.resolve(); },
       addEntry:function(e){ data.entries.push(e); save(); emitMonth(); return Promise.resolve(); },
       deleteEntry:function(id){ data.entries=data.entries.filter(function(e){return e.id!==id;}); save(); emitMonth(); return Promise.resolve(); },
       exportAll:function(){ return Promise.resolve({shops:data.shops.slice(), entries:data.entries.slice()}); }
@@ -329,12 +391,17 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
     var shopsCol=book.collection('shops'), entCol=book.collection('entries');
     var unsubM=null;
     function rows(s){ return s.docs.map(function(d){ var o=Object.assign({}, d.data()); o.id=d.id; return o; }); }
-    function strip(o){ var c=Object.assign({}, o); delete c.id; return c; }
+    function strip(o){ var c=JSON.parse(JSON.stringify(o)); delete c.id; return c; }
     return {
       kind:'db',
       onShops:function(cb,err){ shopsCol.onSnapshot(function(s){ cb(rows(s)); }, err); },
       watchMonth:function(m,cb,err){ if(unsubM) unsubM(); unsubM=entCol.where('month','==',m).onSnapshot(function(s){ cb(rows(s)); }, err); },
-      addShop:function(s){ return shopsCol.doc(s.id).set(strip(s)); },
+      setShop:function(s){ return shopsCol.doc(s.id).set(strip(s)); },
+      deleteShop:async function(id){
+        var snap=await entCol.where('shopId','==',id).limit(1000).get();
+        for(var i=0;i<snap.docs.length;i++){ await entCol.doc(snap.docs[i].id).delete(); }
+        await shopsCol.doc(id).delete();
+      },
       addEntry:function(e){ return entCol.doc(e.id).set(strip(e)); },
       deleteEntry:function(id){ return entCol.doc(id).delete(); },
       exportAll:async function(){ var a=await shopsCol.get(), b=await entCol.limit(1000).get(); return {shops:rows(a), entries:rows(b)}; }
@@ -348,7 +415,7 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
     clearTimeout(toastTimer);
     toastEl=el('div','toast'); toastEl.setAttribute('role','status');
     toastEl.appendChild(el('span',null,msg));
-    if(undoFn){ var b=el('button',null,'تراجع'); b.onclick=function(){ undoFn(); toastEl.remove(); toastEl=null; }; toastEl.appendChild(b); }
+    if(undoFn){ var b=el('button',null,'تراجع'); b.onclick=function(){ undoFn(); if(toastEl){ toastEl.remove(); toastEl=null; } }; toastEl.appendChild(b); }
     document.querySelector('.app').appendChild(toastEl);
     toastTimer=setTimeout(function(){ if(toastEl){ toastEl.remove(); toastEl=null; } }, undoFn?5000:3000);
   }
@@ -358,31 +425,50 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
     else toast('ما انحفظ، جرّب كمان مرة');
   }
 
+  /* ---------- helpers on data ---------- */
+  function curShop(){ return S.shops.find(function(s){return s.id===S.shopId;}); }
+  function btnsOf(shop){ return shop && Array.isArray(shop.buttons) ? shop.buttons : DEFAULT_BTNS; }
+  function entryBtnKey(e){ return e.btn || e.kind; }
+  function entryLabel(e){ return e.label || LABEL[e.kind] || 'شراء'; }
+  function entryIcon(e){ return e.icon || e.kind; }
+  function entryName(e){
+    if(e.kind==='pay') return e.note ? 'دفعة: '+e.note : 'دفعة';
+    if(e.kind==='item') return e.note || 'أغراض';
+    return entryLabel(e) + (e.note? ' — '+e.note : '');
+  }
+  function signed(e){ return e.kind==='pay' ? -e.amount : e.amount; }
+  function colorOf(b, i){ return COLOR_OF[b.icon] && BUILTIN.indexOf(b.id)>=0 ? COLOR_OF[b.icon] : (COLOR_OF[b.icon] || COLORS[i % COLORS.length]); }
+
   /* ---------- actions ---------- */
-  function addEntry(kind, amount, note){
+  function addEntry(kind, amount, note, btn){
     if(!S.shopId || S.readonly) return;
     var dk=S.day, now=new Date();
     var e={ id:newId(), shopId:S.shopId, kind:kind, amount:amount, note:note||'', date:dk, month:monthOf(dk), ts:now.getTime() };
+    if(btn){ e.btn=btn.id; e.label=btn.name; e.icon=btn.icon; }
     if(e.month!==S.month){ S.month=e.month; subscribeMonth(); }
     store.addEntry(e).catch(writeFail);
-    var label = LABEL[kind]||'ملاحظة';
-    toast('انسجل: '+label+' '+fmt(amount)+' ₪', function(){ store.deleteEntry(e.id).catch(writeFail); });
+    toast('انسجل: '+(btn?btn.name:(LABEL[kind]||'ملاحظة'))+' '+fmt(amount)+' ₪', function(){ store.deleteEntry(e.id).catch(writeFail); });
   }
-  function addShop(name){
-    name=name.trim(); if(!name) return;
-    var s={ id:newId(), name:name, created:Date.now() };
+  function tapButton(b){
+    var kind = BUILTIN.indexOf(b.id)>=0 ? b.id : 'tap';
+    addEntry(kind, b.price, '', b);
+  }
+  function addShop(name, type){
+    name=name.trim(); if(!name){ $('shopName').focus(); return; }
+    var s={ id:newId(), name:name, created:Date.now(), buttons: type==='store' ? [] : DEFAULT_BTNS.map(function(b){ return Object.assign({},b); }) };
     S.shopId=s.id; lsSet('debt-shop', s.id);
-    store.addShop(s).catch(writeFail);
+    S.editing = type==='store';
+    store.setShop(s).catch(writeFail);
     $('addShopForm').hidden=true; $('shopName').value='';
+    if(type==='store') setTimeout(function(){ openBtnForm(null); }, 0);
+  }
+  function saveShopButtons(btns){
+    var shop=curShop(); if(!shop) return;
+    var s=Object.assign({}, shop, {buttons:btns});
+    store.setShop(s).catch(writeFail);
   }
 
   /* ---------- render ---------- */
-  function entryName(e){
-    if(TAPS.indexOf(e.kind)>=0) return LABEL[e.kind] + (e.note? ' — '+e.note : '');
-    if(e.kind==='pay') return e.note ? 'دفعة: '+e.note : 'دفعة';
-    return e.note || 'أغراض';
-  }
-  function signed(e){ return e.kind==='pay' ? -e.amount : e.amount; }
   function dayTitle(dk){
     var t=todayKey(); var y=new Date(); y.setDate(y.getDate()-1);
     if(dk===t) return 'اليوم';
@@ -390,18 +476,29 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
     var p=dk.split('-'); var d=new Date(+p[0], +p[1]-1, +p[2]);
     return DAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()];
   }
+  function groupTaps(mine, shop){
+    var order=[], G={};
+    btnsOf(shop).forEach(function(b,i){ G[b.id]={label:b.name, count:0, sum:0, color:colorOf(b,i)}; order.push(b.id); });
+    mine.forEach(function(e){
+      if(e.kind==='item'||e.kind==='pay') return;
+      var k=entryBtnKey(e);
+      if(!G[k]){ G[k]={label:entryLabel(e), count:0, sum:0, color:COLOR_OF[e.kind]||'i'}; order.push(k); }
+      G[k].count++; G[k].sum+=e.amount;
+    });
+    return order.map(function(k){ return G[k]; });
+  }
   function render(){
     var p=S.month.split('-'); $('mLabel').textContent=MONTHS[+p[1]-1]+' '+p[0];
     $('loading').hidden=S.loaded; $('main').hidden=!S.loaded;
     if(!S.loaded) return;
 
     var shops=S.shops.slice().sort(function(a,b){ return (a.created||0)-(b.created||0); });
-    if(!shops.some(function(s){return s.id===S.shopId;})) S.shopId = shops.length? shops[0].id : null;
+    if(!shops.some(function(s){return s.id===S.shopId;})){ S.shopId = shops.length? shops[0].id : null; S.editing=false; }
 
     var bar=$('shops'); bar.textContent='';
     shops.forEach(function(s){
       var b=el('button','chip',s.name); b.setAttribute('role','tab'); b.setAttribute('aria-pressed', String(s.id===S.shopId));
-      b.onclick=function(){ S.shopId=s.id; lsSet('debt-shop', s.id); closeNote(); render(); };
+      b.onclick=function(){ if(S.shopId!==s.id){ S.shopId=s.id; lsSet('debt-shop', s.id); S.editing=false; closeNote(); closeBtnForm(); } render(); };
       bar.appendChild(b);
     });
     if(shops.length && !S.readonly){ var a=el('button','chip add','+ محل'); a.onclick=openShopForm; bar.appendChild(a); }
@@ -409,40 +506,65 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
 
     $('noShop').hidden = !!shops.length || !$('addShopForm').hidden;
     $('shopView').hidden = !S.shopId;
-    $('shopView').style.display = S.shopId ? 'flex' : '';
 
     if(S.shopId){
-      var shop=shops.find(function(s){return s.id===S.shopId;});
+      var shop=curShop(), btns=btnsOf(shop);
       var mine=S.entries.filter(function(e){return e.shopId===S.shopId;});
-      var C={},V={},T={},iv=0,dv=0;
-      TAPS.forEach(function(k){ C[k]=0; V[k]=0; T[k]=0; });
-      mine.forEach(function(e){
-        if(TAPS.indexOf(e.kind)>=0){ C[e.kind]++; V[e.kind]+=e.amount; if(e.date===S.day) T[e.kind]++; }
-        else if(e.kind==='item') iv+=e.amount; else if(e.kind==='pay') dv+=e.amount;
-      });
-      var tot=iv-dv; TAPS.forEach(function(k){ tot+=V[k]; });
+      var groups=groupTaps(mine, shop);
+      var iv=0, dv=0;
+      mine.forEach(function(e){ if(e.kind==='item') iv+=e.amount; else if(e.kind==='pay') dv+=e.amount; });
+      var tot=iv-dv; groups.forEach(function(g){ tot+=g.sum; });
       $('totLbl').textContent='المطلوب لـ'+shop.name+' هالشهر';
       $('tot').textContent=fmt(tot);
-      var dl = S.day===todayKey() ? 'اليوم ' : 'هاليوم ';
-      [['power','p','m'],['phone','m'],['laptop','l'],['cool','c']].forEach(function(x){
-        var k=x[0], a=x[1];
-        $(a+'c').textContent=C[k]; $(a+'v').textContent=fmt(V[k])+' ₪'; $(a+'Today').textContent=dl+T[k];
-      });
-      $('iv').textContent=fmt(iv)+' ₪'; $('dv').textContent=(dv?'−':'')+fmt(dv)+' ₪';
-      $('pdf').disabled = !mine.length;
-      $('day').value=S.day; $('today').hidden = S.day===todayKey();
-      ['addPower','addPhone','addLaptop','addCool','openNote'].forEach(function(id){ $(id).disabled=S.readonly; });
 
+      var br=$('break'); br.textContent='';
+      function brow(cls, label, val){ var d=el('div',cls); d.appendChild(el('span',null,label)); d.appendChild(el('b',null,val)); br.appendChild(d); }
+      groups.forEach(function(g){ brow(g.color, g.label+' ×'+g.count, fmt(g.sum)+' ₪'); });
+      brow('i','أغراض', fmt(iv)+' ₪');
+      brow('d','دفعات', (dv?'−':'')+fmt(dv)+' ₪');
+
+      $('day').value=S.day; $('today').hidden = S.day===todayKey();
+      var dl = S.day===todayKey() ? 'اليوم ' : 'هاليوم ';
+
+      // tap buttons
+      $('editBtns').hidden = S.readonly;
+      $('editBtns').textContent = S.editing ? 'تم' : 'تعديل';
+      $('editHint').hidden = !S.editing;
+      $('shopEdit').hidden = !S.editing;
+      if(S.editing && document.activeElement!==$('renameInput')) $('renameInput').value=shop.name;
+      var taps=$('taps'); taps.textContent='';
+      btns.forEach(function(b,i){
+        var t=el('button','tap '+colorOf(b,i)+(S.editing?' editing':'')); t.type='button';
+        t.appendChild(iconNode(b.icon));
+        t.appendChild(el('strong',null,b.name));
+        t.appendChild(el('span','num','+ '+fmt(b.price)+' ₪'+(b.unit?' '+b.unit:'')));
+        var cnt=mine.filter(function(e){ return entryBtnKey(e)===b.id && e.date===S.day; }).length;
+        t.appendChild(el('span','cnt num', S.editing ? 'تعديل' : dl+cnt));
+        t.disabled=S.readonly;
+        t.onclick=function(){ if(S.editing) openBtnForm(b); else tapButton(b); };
+        taps.appendChild(t);
+      });
+      if(S.editing || !btns.length){
+        var n=el('button','tap new'); n.type='button'; n.disabled=S.readonly;
+        n.appendChild(el('span','icn emo','＋')); n.appendChild(el('strong',null,'زر جديد'));
+        n.appendChild(el('span',null,'شبسي، بسكوت، أي إشي'));
+        n.onclick=function(){ S.editing=true; openBtnForm(null); };
+        taps.appendChild(n);
+      }
+      $('openNote').disabled=S.readonly;
+      $('pdf').disabled = !mine.length;
+
+      // log
       var log=$('log'); log.textContent='';
       if(!mine.length){
         var em=el('div','empty'); em.appendChild(el('b',null,'ما في تسجيلات بهالشهر'));
-        em.appendChild(document.createTextNode('اكبس على "شحن باور" أو "شحن جوال" وبينحفظ مع التاريخ لحاله.'));
+        em.appendChild(document.createTextNode('اكبس على أي زر فوق وبينحفظ مع التاريخ لحاله.'));
         log.appendChild(em);
       } else {
-        var groups={};
-        mine.forEach(function(e){ (groups[e.date]=groups[e.date]||[]).push(e); });
-        Object.keys(groups).sort().reverse().forEach(function(dk){
-          var list=groups[dk].sort(function(a,b){return b.ts-a.ts;});
+        var byDay={};
+        mine.forEach(function(e){ (byDay[e.date]=byDay[e.date]||[]).push(e); });
+        Object.keys(byDay).sort().reverse().forEach(function(dk){
+          var list=byDay[dk].sort(function(a,b){return b.ts-a.ts;});
           var g=el('div','group'); var h=el('h3');
           h.appendChild(el('span',null,dayTitle(dk)));
           h.appendChild(el('span','num',fmt(list.reduce(function(a,e){return a+signed(e);},0))+' ₪'));
@@ -450,10 +572,12 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
           var ul=el('div','list');
           list.forEach(function(e){
             var r=el('div','item');
-            var ic=el('div','ic '+e.kind); ic.innerHTML=ICONS[e.kind]||ICONS.item; r.appendChild(ic);
+            var ik=entryIcon(e);
+            var ic=el('div','ic '+(COLOR_OF[ik]? ik : (e.kind==='pay'?'pay':'item')));
+            if(SVG[ik]) ic.innerHTML=SVG[ik]; else ic.appendChild(el('span','emo-s',ik));
+            r.appendChild(ic);
             var w=el('div','what');
-            var name = entryName(e);
-            w.appendChild(el('b',null,name));
+            w.appendChild(el('b',null,entryName(e)));
             var t=new Date(e.ts);
             if(dateKey(t)===e.date) w.appendChild(el('small','num',pad(t.getHours())+':'+pad(t.getMinutes())));
             r.appendChild(w);
@@ -491,11 +615,90 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
       'الدفتر محفوظ على هالجهاز بس، اعمل نسخة احتياطية كل فترة.';
   }
 
+  /* ---------- button editor ---------- */
+  function renderIconGrid(){
+    var g=$('iconGrid'); g.textContent='';
+    ICON_CHOICES.forEach(function(ic){
+      var b=el('button'); b.type='button'; b.setAttribute('aria-pressed', String(ic===S.btnIcon));
+      if(SVG[ic]) b.innerHTML=SVG[ic]; else b.textContent=ic;
+      b.setAttribute('aria-label', SVG[ic] ? (LABEL[ic]||ic) : ic);
+      b.onclick=function(){ S.btnIcon=ic; renderIconGrid(); };
+      g.appendChild(b);
+    });
+  }
+  function openBtnForm(b){
+    S.btnEdit = b ? b.id : null;
+    S.btnIcon = b ? b.icon : EMOJIS[0];
+    $('btnFormTitle').textContent = b ? 'تعديل زر' : 'زر جديد';
+    $('btnName').value = b ? b.name : '';
+    $('btnPrice').value = b ? b.price : '';
+    $('delBtn').hidden = !b; $('delBtn').textContent='حذف الزر'; $('delBtn').dataset.armed='';
+    renderIconGrid();
+    $('btnForm').hidden=false;
+    render();
+    $('btnForm').scrollIntoView({block:'center', behavior:'smooth'});
+    if(!b) $('btnName').focus();
+  }
+  function closeBtnForm(){ $('btnForm').hidden=true; S.btnEdit=null; }
+  $('btnForm').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var name=$('btnName').value.trim(), price=parseFloat($('btnPrice').value);
+    if(!name){ $('btnName').focus(); toast('اكتب اسم الزر'); return; }
+    if(!(price>=0) || $('btnPrice').value===''){ $('btnPrice').focus(); toast('اكتب السعر'); return; }
+    var btns=btnsOf(curShop()).map(function(x){ return Object.assign({},x); });
+    if(S.btnEdit){
+      btns=btns.map(function(x){ return x.id===S.btnEdit ? Object.assign(x,{name:name, price:price, icon:S.btnIcon}) : x; });
+    } else {
+      btns.push({id:'b-'+newId(), name:name, price:price, icon:S.btnIcon});
+    }
+    saveShopButtons(btns); closeBtnForm();
+    toast('انحفظ الزر: '+name);
+  });
+  $('cancelBtn').onclick=function(){ closeBtnForm(); render(); };
+  $('delBtn').onclick=function(){
+    var b=$('delBtn');
+    if(!b.dataset.armed){ b.dataset.armed='1'; b.textContent='متأكد؟ اكبس كمان مرة'; setTimeout(function(){ b.dataset.armed=''; b.textContent='حذف الزر'; },3000); return; }
+    var btns=btnsOf(curShop()).filter(function(x){ return x.id!==S.btnEdit; });
+    saveShopButtons(btns); closeBtnForm(); toast('انحذف الزر، والتسجيلات القديمة ضلت محسوبة');
+  };
+  $('editBtns').onclick=function(){ S.editing=!S.editing; if(!S.editing){ closeBtnForm(); $('delShopConfirm').hidden=true; } render(); };
+  $('renameBtn').onclick=function(){
+    var n=$('renameInput').value.trim(), shop=curShop(); if(!n||!shop||n===shop.name) return;
+    store.setShop(Object.assign({}, shop, {name:n})).catch(writeFail); toast('تغيّر الاسم');
+  };
+  $('delShop').onclick=function(){
+    var shop=curShop(); if(!shop) return;
+    var n=S.entries.filter(function(e){return e.shopId===shop.id;}).length;
+    $('delShopMsg').textContent='بينحذف "'+shop.name+'" وكل تسجيلاته بكل الشهور'+(n?' (منها '+n+' بهالشهر)':'')+'. ما في تراجع.';
+    $('delShopConfirm').hidden=false;
+  };
+  $('delShopNo').onclick=function(){ $('delShopConfirm').hidden=true; };
+  $('delShopYes').onclick=function(){
+    var shop=curShop(); if(!shop) return;
+    $('delShopConfirm').hidden=true; S.editing=false; closeBtnForm();
+    store.deleteShop(shop.id).then(function(){ toast('انحذف المحل'); }).catch(writeFail);
+  };
+
   /* ---------- PDF statement ---------- */
   var downloads=null;
   function fmtDate(dk){ var p=dk.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  function dayTitleShort(dk){ var q=dk.split('-'); var d=new Date(+q[0],+q[1]-1,+q[2]); return DAYS[d.getDay()]+' '+fmtDate(dk); }
+  async function saveFile(name, blob){
+    if(window.claude && typeof window.claude.use==='function'){
+      if(!downloads){ try{ downloads=await window.claude.use('downloads'); }catch(e){} }
+      if(!downloads){ toast('حفظ الملفات مش متاح هون'); return; }
+      await downloads.save({filename:name, data:blob}); return;
+    }
+    var file=null; try{ file=new File([blob], name, {type:blob.type}); }catch(e){}
+    if(file && navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file]}); return; }catch(e){ if(e && e.name==='AbortError') return; }
+    }
+    var url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+  }
   async function makePdf(){
-    var shop=S.shops.find(function(s){return s.id===S.shopId;}); if(!shop) return;
+    var shop=curShop(); if(!shop) return;
     var mine=S.entries.filter(function(e){return e.shopId===S.shopId;}).sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:a.ts-b.ts; });
     if(!mine.length) return;
     if(!window.html2canvas || !window.jspdf){ toast('ما قدرنا نحمّل أداة الـPDF، تأكد من النت'); return; }
@@ -521,11 +724,7 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
       tb.appendChild(body); sheet.appendChild(tb);
       var sum=el('div','sum'), tot=0;
       function line(label, val, cls){ var d=el('div',cls); d.appendChild(el('span',null,label)); d.appendChild(el('span','num',val)); sum.appendChild(d); }
-      TAPS.forEach(function(k){
-        var xs=mine.filter(function(e){return e.kind===k;}); if(!xs.length) return;
-        var v=xs.reduce(function(a,e){return a+e.amount;},0); tot+=v;
-        line(LABEL[k].replace(' (يوم)','')+' × '+xs.length, fmt(v)+' ₪');
-      });
+      groupTaps(mine, shop).forEach(function(g){ if(!g.count) return; tot+=g.sum; line(g.label+' × '+g.count, fmt(g.sum)+' ₪'); });
       var iv=mine.filter(function(e){return e.kind==='item';}).reduce(function(a,e){return a+e.amount;},0);
       var dv=mine.filter(function(e){return e.kind==='pay';}).reduce(function(a,e){return a+e.amount;},0);
       if(iv){ tot+=iv; line('أغراض وملاحظات', fmt(iv)+' ₪'); }
@@ -548,9 +747,7 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
         pdf.addImage(part.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw,h*pw/canvas.width);
         y+=h; first=false;
       }
-      var blob=pdf.output('blob');
-      var fname='كشف حساب - '+shop.name+' - '+S.month+'.pdf';
-      await saveFile(fname, blob);
+      await saveFile('كشف حساب - '+shop.name+' - '+S.month+'.pdf', pdf.output('blob'));
     }catch(e){
       if(e && e.code==='declined') {}
       else if(e && e.code==='rate_limited') toast('في نافذة حفظ مفتوحة، جرّب بعد شوي');
@@ -560,26 +757,21 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
       btn.disabled=false; btn.lastChild.textContent='كشف حساب PDF لهالشهر';
     }
   }
-  async function saveFile(name, blob){
-    if(window.claude && typeof window.claude.use==='function'){
-      if(!downloads){ try{ downloads=await window.claude.use('downloads'); }catch(e){} }
-      if(!downloads){ toast('حفظ الملفات مش متاح هون'); return; }
-      await downloads.save({filename:name, data:blob}); return;
-    }
-    var file=null; try{ file=new File([blob], name, {type:blob.type}); }catch(e){}
-    if(file && navigator.canShare && navigator.canShare({files:[file]})){
-      try{ await navigator.share({files:[file]}); return; }catch(e){ if(e && e.name==='AbortError') return; }
-    }
-    var url=URL.createObjectURL(blob), a=document.createElement('a');
-    a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-  }
+
+  /* ---------- backup ---------- */
   async function exportBackup(){
     try{
       var all=await store.exportAll();
-      var blob=new Blob([JSON.stringify({app:'daftar-al-dain',version:1,exported:Date.now(),shops:all.shops,entries:all.entries})],{type:'application/json'});
+      var blob=new Blob([JSON.stringify({app:'daftar-al-dain',version:2,exported:Date.now(),shops:all.shops,entries:all.entries})],{type:'application/json'});
       await saveFile('نسخة دفتر الدين '+todayKey()+'.json', blob);
     }catch(e){ if(!(e && e.code==='declined')) toast('ما قدرنا نعمل النسخة، جرّب كمان مرة'); }
+  }
+  function cleanButtons(arr){
+    if(!Array.isArray(arr)) return undefined;
+    return arr.slice(0,40).filter(function(b){ return b && b.id && b.name; }).map(function(b){
+      var o={id:String(b.id).slice(0,60), name:String(b.name).slice(0,30), price:+b.price||0, icon:String(b.icon||'🛒').slice(0,16)};
+      if(b.unit) o.unit=String(b.unit).slice(0,12); return o;
+    });
   }
   async function importBackup(file){
     if(S.readonly) return;
@@ -588,45 +780,52 @@ h2{font-family:var(--f-display);font-size:19px;margin:8px 0 0}
       if(!d || !Array.isArray(d.shops) || !Array.isArray(d.entries)) throw 0;
       var cur=await store.exportAll(), haveS={}, haveE={}, ns=0, ne=0;
       cur.shops.forEach(function(x){ haveS[x.id]=1; }); cur.entries.forEach(function(x){ haveE[x.id]=1; });
-      for(var i=0;i<d.shops.length;i++){ var sh=d.shops[i]; if(sh && sh.id && sh.name && !haveS[sh.id]){ await store.addShop({id:String(sh.id), name:String(sh.name), created:+sh.created||Date.now()}); ns++; } }
-      for(var j=0;j<d.entries.length;j++){ var e=d.entries[j];
-        if(e && e.id && e.shopId && typeof e.date==='string' && (PRICE.hasOwnProperty(e.kind)||e.kind==='item'||e.kind==='pay')){
-          if(haveE[e.id] || !/^\d{4}-\d{2}-\d{2}$/.test(e.date)) continue;
-          await store.addEntry({id:String(e.id), shopId:String(e.shopId), kind:e.kind, amount:+e.amount||0, note:String(e.note||''), date:e.date, month:e.date.slice(0,7), ts:+e.ts||Date.now()}); ne++;
+      for(var i=0;i<d.shops.length;i++){ var sh=d.shops[i];
+        if(sh && sh.id && sh.name && !haveS[sh.id]){
+          var s={id:String(sh.id), name:String(sh.name).slice(0,40), created:+sh.created||Date.now()};
+          var bb=cleanButtons(sh.buttons); if(bb) s.buttons=bb;
+          await store.setShop(s); ns++;
         }
+      }
+      var KINDS={power:1,phone:1,laptop:1,cool:1,tap:1,item:1,pay:1};
+      for(var j=0;j<d.entries.length;j++){ var e=d.entries[j];
+        if(!(e && e.id && e.shopId && typeof e.date==='string' && KINDS[e.kind])) continue;
+        if(haveE[e.id] || !/^\d{4}-\d{2}-\d{2}$/.test(e.date)) continue;
+        var ne2={id:String(e.id), shopId:String(e.shopId), kind:e.kind, amount:+e.amount||0, note:String(e.note||'').slice(0,80), date:e.date, month:e.date.slice(0,7), ts:+e.ts||Date.now()};
+        if(e.btn) ne2.btn=String(e.btn).slice(0,60); if(e.label) ne2.label=String(e.label).slice(0,30); if(e.icon) ne2.icon=String(e.icon).slice(0,16);
+        await store.addEntry(ne2); ne++;
       }
       toast('انضاف '+ns+' محل و'+ne+' تسجيلة');
     }catch(err){ if(err && err.code) writeFail(err); else toast('الملف مش نسخة من دفتر الدين'); }
   }
-  function dayTitleShort(dk){ var q=dk.split('-'); var d=new Date(+q[0],+q[1]-1,+q[2]); return DAYS[d.getDay()]+' '+fmtDate(dk); }
 
   /* ---------- forms ---------- */
   function openShopForm(){ $('addShopForm').hidden=false; $('noShop').hidden=true; $('shopName').focus(); }
   function closeNote(){ $('noteForm').hidden=true; $('openNote').hidden=false; $('noteText').value=''; $('noteAmt').value=''; }
+  function segInit(groupId, attr, onPick){
+    Array.prototype.forEach.call($(groupId).querySelectorAll('button'), function(b){
+      b.onclick=function(){
+        Array.prototype.forEach.call($(groupId).querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', String(x===b)); });
+        onPick(b.dataset[attr]);
+      };
+    });
+  }
+  segInit('shopType','t',function(t){ S.shopType=t; $('shopTypeHint').textContent = t==='store' ? 'بيبدأ فاضي، وبتضيف أزرارك (شبسي، بسكوت…) بالسعر والأيقونة.' : 'بيجي فيه أزرار الباور والجوال واللابتوب والتبريد جاهزة.'; });
+  segInit('noteKind','k',function(k){ S.noteKind=k; $('noteText').placeholder = k==='pay' ? 'ملاحظة (اختياري)' : 'الملاحظة، مثلاً: دجاج'; });
   $('firstShop').onclick=openShopForm;
   $('cancelShop').onclick=function(){ $('addShopForm').hidden=true; render(); };
-  $('addShopForm').addEventListener('submit',function(ev){ ev.preventDefault(); addShop($('shopName').value); });
-  $('addPower').onclick=function(){ addEntry('power', PRICE.power); };
-  $('addPhone').onclick=function(){ addEntry('phone', PRICE.phone); };
-  $('addLaptop').onclick=function(){ addEntry('laptop', PRICE.laptop); };
-  $('addCool').onclick=function(){ addEntry('cool', PRICE.cool); };
-  $('pdf').onclick=makePdf;
-  $('exportBtn').onclick=exportBackup;
-  $('importFile').addEventListener('change',function(){ var f=this.files&&this.files[0]; this.value=''; if(f) importBackup(f); });
+  $('addShopForm').addEventListener('submit',function(ev){ ev.preventDefault(); addShop($('shopName').value, S.shopType); });
   $('openNote').onclick=function(){ $('noteForm').hidden=false; $('openNote').hidden=true; $('noteText').focus(); };
   $('cancelNote').onclick=closeNote;
-  Array.prototype.forEach.call(document.querySelectorAll('.seg button'), function(b){
-    b.onclick=function(){ S.noteKind=b.dataset.k;
-      Array.prototype.forEach.call(document.querySelectorAll('.seg button'), function(x){ x.setAttribute('aria-pressed', String(x===b)); });
-      $('noteText').placeholder = S.noteKind==='pay' ? 'ملاحظة (اختياري)' : 'الملاحظة، مثلاً: دجاج';
-    };
-  });
   $('noteForm').addEventListener('submit',function(ev){
     ev.preventDefault();
     var amt=parseFloat($('noteAmt').value); var txt=$('noteText').value.trim();
     if(!(amt>0)){ $('noteAmt').focus(); toast('اكتب المبلغ'); return; }
     addEntry(S.noteKind, amt, txt); closeNote();
   });
+  $('pdf').onclick=makePdf;
+  $('exportBtn').onclick=exportBackup;
+  $('importFile').addEventListener('change',function(){ var f=this.files&&this.files[0]; this.value=''; if(f) importBackup(f); });
   $('day').addEventListener('change',function(){
     var v=$('day').value || todayKey(); S.day=v;
     if(monthOf(v)!==S.month){ S.month=monthOf(v); subscribeMonth(); }
